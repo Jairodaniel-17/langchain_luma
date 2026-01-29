@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "langchain_luma"
+version = "0.1.0"
+description = "Python Client SDK for Luma (RustKissVDB)"
+authors = [
+  { name = "Jairo Mendoza", email = "jairodaniel.mt@gmail.com" },
+]
+readme = "README.md"
+requires-python = ">=3.13"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "langchain-core>=1.2.7",
+    "pytest>=9.0.2",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+langchain = ["langchain-core", "langchain-community"]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.1.0",
+    "build",
+    "twine"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/example/langchain_luma"
+"Bug Tracker" = "https://github.com/example/langchain_luma/issues"
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
