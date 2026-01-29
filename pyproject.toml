@@ -10,7 +10,7 @@ authors = [
   { name = "Jairo Mendoza", email = "jairodaniel.mt@gmail.com" },
 ]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
