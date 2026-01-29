@@ -3,6 +3,15 @@ from typing import Any, Dict, List, Literal, Optional
 
 from .http import HttpTransport
 
+# ---------- Helpers ----------
+
+
+def _pick(data: Dict[str, Any], keys: set[str]) -> Dict[str, Any]:
+    return {k: data[k] for k in keys if k in data}
+
+
+# ---------- Models ----------
+
 
 @dataclass
 class VectorCollectionInfo:
@@ -17,6 +26,26 @@ class VectorCollectionInfo:
     created_at_ms: Optional[int] = None
     updated_at_ms: Optional[int] = None
 
+    @classmethod
+    def from_api(cls, data: Dict[str, Any]) -> "VectorCollectionInfo":
+        return cls(
+            **_pick(
+                data,
+                {
+                    "collection",
+                    "dim",
+                    "metric",
+                    "live_count",
+                    "total_records",
+                    "upsert_count",
+                    "file_len",
+                    "applied_offset",
+                    "created_at_ms",
+                    "updated_at_ms",
+                },
+            )
+        )
+
 
 @dataclass
 class VectorCollectionDetailResponse:
@@ -28,8 +57,28 @@ class VectorCollectionDetailResponse:
     updated_at_ms: Optional[int] = None
     segments: Optional[int] = None
     deleted: Optional[int] = None
-    manifest: Optional[Dict] = None
+    manifest: Optional[Dict[str, Any]] = None
     notes: Optional[str] = None
+
+    @classmethod
+    def from_api(cls, data: Dict[str, Any]) -> "VectorCollectionDetailResponse":
+        return cls(
+            **_pick(
+                data,
+                {
+                    "collection",
+                    "dim",
+                    "metric",
+                    "count",
+                    "created_at_ms",
+                    "updated_at_ms",
+                    "segments",
+                    "deleted",
+                    "manifest",
+                    "notes",
+                },
+            )
+        )
 
 
 @dataclass
@@ -37,6 +86,10 @@ class VectorSearchHit:
     id: str
     score: float
     meta: Optional[Dict[str, Any]] = None
+
+    @classmethod
+    def from_api(cls, data: Dict[str, Any]) -> "VectorSearchHit":
+        return cls(**_pick(data, {"id", "score", "meta"}))
 
 
 @dataclass
@@ -46,10 +99,10 @@ class VectorBatchItem:
     meta: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        d = {"id": self.id, "vector": self.vector}
+        payload = {"id": self.id, "vector": self.vector}
         if self.meta is not None:
-            d["meta"] = self.meta
-        return d
+            payload["meta"] = self.meta
+        return payload
 
 
 @dataclass
@@ -58,30 +111,43 @@ class VectorBatchResult:
     id: str
     error: Optional[Dict[str, Any]] = None
 
+    @classmethod
+    def from_api(cls, data: Dict[str, Any]) -> "VectorBatchResult":
+        return cls(**_pick(data, {"status", "id", "error"}))
+
 
 @dataclass
 class VectorBatchResponse:
     results: List[VectorBatchResult]
 
 
+# ---------- Client ----------
+
+
 class VectorsClient:
     def __init__(self, http: HttpTransport):
         self._http = http
 
-    def create_collection(self, name: str, dim: int, metric: Literal["cosine", "dot"]) -> Dict[str, Any]:
-        """Create a new vector collection."""
+    # ---- Collections ----
+
+    def create_collection(
+        self,
+        name: str,
+        dim: int,
+        metric: Literal["cosine", "dot"],
+    ) -> Dict[str, Any]:
         payload = {"dim": dim, "metric": metric}
         return self._http._post(f"/v1/vector/{name}", json=payload)
 
     def list_collections(self) -> List[VectorCollectionInfo]:
-        """List all vector collections."""
         data = self._http._get("/v1/vector")
-        return [VectorCollectionInfo(**item) for item in data.get("collections", [])]
+        return [VectorCollectionInfo.from_api(item) for item in data.get("collections", [])]
 
     def get_collection(self, name: str) -> VectorCollectionDetailResponse:
-        """Get details of a vector collection."""
         data = self._http._get(f"/v1/vector/{name}")
-        return VectorCollectionDetailResponse(**data)
+        return VectorCollectionDetailResponse.from_api(data)
+
+    # ---- Upsert / Delete ----
 
     def upsert(
         self,
@@ -90,22 +156,32 @@ class VectorsClient:
         vector: List[float],
         meta: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Upsert a single vector."""
-        payload = {"id": id, "vector": vector, "meta": meta}
+        payload = {"id": id, "vector": vector}
+        if meta is not None:
+            payload["meta"] = meta
         return self._http._post(f"/v1/vector/{collection}/upsert", json=payload)
 
-    def upsert_batch(self, collection: str, items: List[VectorBatchItem]) -> VectorBatchResponse:
-        """Upsert multiple vectors in batch."""
+    def upsert_batch(
+        self,
+        collection: str,
+        items: List[VectorBatchItem],
+    ) -> VectorBatchResponse:
         payload = {"items": [item.to_dict() for item in items]}
-        data = self._http._post(f"/v1/vector/{collection}/upsert_batch", json=payload)
-        results = [VectorBatchResult(**res) for res in data.get("results", [])]
-        return VectorBatchResponse(results=results)
+        data = self._http._post(
+            f"/v1/vector/{collection}/upsert_batch",
+            json=payload,
+        )
+        return VectorBatchResponse(results=[VectorBatchResult.from_api(r) for r in data.get("results", [])])
 
     def delete(self, collection: str, id: str) -> bool:
-        """Delete a vector."""
         payload = {"id": id}
-        data = self._http._post(f"/v1/vector/{collection}/delete", json=payload)
-        return data.get("deleted", False)
+        data = self._http._post(
+            f"/v1/vector/{collection}/delete",
+            json=payload,
+        )
+        return bool(data.get("deleted", False))
+
+    # ---- Search ----
 
     def search(
         self,
@@ -115,12 +191,14 @@ class VectorsClient:
         filters: Optional[Dict[str, Any]] = None,
         include_meta: bool = False,
     ) -> List[VectorSearchHit]:
-        """Search for vectors."""
         payload = {
             "vector": vector,
             "k": k,
             "filters": filters,
             "include_meta": include_meta,
         }
-        data = self._http._post(f"/v1/vector/{collection}/search", json=payload)
-        return [VectorSearchHit(**hit) for hit in data.get("hits", [])]
+        data = self._http._post(
+            f"/v1/vector/{collection}/search",
+            json=payload,
+        )
+        return [VectorSearchHit.from_api(hit) for hit in data.get("hits", [])]
