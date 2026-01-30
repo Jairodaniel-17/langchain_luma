@@ -11,14 +11,9 @@ from .validators import (
     validate_vector,
 )
 
-# ---------- Helpers ----------
-
 
 def _pick(data: Dict[str, Any], keys: set[str]) -> Dict[str, Any]:
     return {k: data[k] for k in keys if k in data}
-
-
-# ---------- Models ----------
 
 
 @dataclass
@@ -220,7 +215,7 @@ class VectorsClient:
     def get_vector(self, collection: str, id: str) -> VectorItemResponse:
         validate_collection(collection, self._http.config.max_collection_len)
         validate_id(id, self._http.config.max_id_len)
-        
+
         data = self._http._get(f"/v1/vector/{collection}/get", params={"id": id})
         return VectorItemResponse.from_api(data)
 
@@ -252,19 +247,21 @@ class VectorsClient:
     ) -> bool:
         validate_collection(collection, self._http.config.max_collection_len)
         validate_id(id, self._http.config.max_id_len)
-        
+
         if vector is not None:
             validate_vector(vector, self._http.config.max_vector_dim)
-        
+
         if meta is not None:
             validate_json_size(meta, self._http.config.max_json_bytes, "meta")
 
-        payload = {"id": id}
+        # CORRECCIÓN AQUÍ: Definir explícitamente el tipo como Dict[str, Any]
+        payload: Dict[str, Any] = {"id": id}
+
         if vector is not None:
-            payload["vector"] = vector
+            payload["vector"] = vector  # Ahora es válido
         if meta is not None:
-            payload["meta"] = meta
-            
+            payload["meta"] = meta  # Ahora es válido
+
         data = self._http._post(f"/v1/vector/{collection}/update", json=payload)
         return bool(data.get("ok", False))
 
@@ -296,7 +293,7 @@ class VectorsClient:
     def delete(self, collection: str, id: str) -> bool:
         validate_collection(collection, self._http.config.max_collection_len)
         validate_id(id, self._http.config.max_id_len)
-        
+
         payload = {"id": id}
         data = self._http._post(
             f"/v1/vector/{collection}/delete",
@@ -308,12 +305,12 @@ class VectorsClient:
         validate_collection(collection, self._http.config.max_collection_len)
         if not ids:
             raise ValidationError("ids required")
-            
+
         if len(ids) > self._http.config.max_vector_batch:
             raise ValidationError("too many batch ids")
-            
+
         for id in ids:
-             validate_id(id, self._http.config.max_id_len)
+            validate_id(id, self._http.config.max_id_len)
 
         payload = {"ids": ids}
         data = self._http._post(
@@ -335,9 +332,9 @@ class VectorsClient:
         validate_collection(collection, self._http.config.max_collection_len)
         validate_vector(vector, self._http.config.max_vector_dim)
         validate_k(k, self._http.config.max_k)
-        
+
         if filters is not None:
-             validate_json_size(filters, self._http.config.max_json_bytes, "filters")
+            validate_json_size(filters, self._http.config.max_json_bytes, "filters")
 
         payload = {
             "vector": vector,
@@ -361,7 +358,7 @@ class VectorsClient:
         search_list_size: Optional[int] = None,
     ) -> DiskAnnMutationResponse:
         validate_collection(collection, self._http.config.max_collection_len)
-        
+
         payload = {}
         if max_degree is not None:
             payload["max_degree"] = max_degree
@@ -381,7 +378,7 @@ class VectorsClient:
         search_list_size: Optional[int] = None,
     ) -> DiskAnnMutationResponse:
         validate_collection(collection, self._http.config.max_collection_len)
-        
+
         payload = {}
         if max_degree is not None:
             payload["max_degree"] = max_degree
@@ -389,7 +386,7 @@ class VectorsClient:
             payload["build_threads"] = build_threads
         if search_list_size is not None:
             payload["search_list_size"] = search_list_size
-            
+
         data = self._http._post(f"/v1/vector/{collection}/diskann/tune", json=payload)
         return DiskAnnMutationResponse.from_api(data)
 

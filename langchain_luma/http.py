@@ -66,7 +66,6 @@ class HttpTransport:
 
         self._handle_error(response)
 
-        # Handle 204 No Content
         if response.status_code == 204:
             return None
 
@@ -115,21 +114,18 @@ class HttpTransport:
         except ValueError:
             pass
 
-        # Typed errors based on response content or status
         err_code = data.get("error") if isinstance(data, dict) else None
 
         if err_code == "dim_mismatch":
             raise DimMismatch(err_msg)
         if err_code == "not_found" or resp.status_code == 404:
             if isinstance(data.get("message"), str):
-                 err_msg = data.get("message")
-            raise NotFound(err_msg) if err_code == "not_found" else LumaNotFound(err_msg)
+                err_msg = data.get("message")
+            raise (NotFound(err_msg) if err_code == "not_found" else LumaNotFound(err_msg))
         if err_code == "already_exists" or resp.status_code == 409:
-            raise AlreadyExists(err_msg) if err_code == "already_exists" else LumaConflict(err_msg)
-        
-        # Legacy status checks for backward compatibility if payload doesn't match new schema
+            raise (AlreadyExists(err_msg) if err_code == "already_exists" else LumaConflict(err_msg))
+
         if resp.status_code in (401, 403):
             raise LumaAuthError(err_msg)
-        
-        # Default fallback
+
         raise LumaError(err_msg)

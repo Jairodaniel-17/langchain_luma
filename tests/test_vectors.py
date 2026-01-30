@@ -13,9 +13,7 @@ def test_create_collection(client, mock_response):
 
 
 def test_search(client, mock_response):
-    mock_response.json.return_value = {
-        "hits": [{"id": "1", "score": 0.9, "meta": {"a": 1}}]
-    }
+    mock_response.json.return_value = {"hits": [{"id": "1", "score": 0.9, "meta": {"a": 1}}]}
 
     hits = client.vectors.search("test", [0.1] * 128)
     assert len(hits) == 1
