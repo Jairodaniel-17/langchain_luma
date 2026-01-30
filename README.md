@@ -19,7 +19,7 @@ graph TD
     end
 
     subgraph "Infrastructure"
-        Server[Luma Server (Rust Binary)]
+        Server[Luma Server - Rust Binary]
         Storage[(Vector Storage)]
     end
 
@@ -28,6 +28,7 @@ graph TD
     LC -->|Wraps| SDK
     SDK -->|HTTP/REST| Server
     Server -->|Read/Write| Storage
+
 
 ```
 
