@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "langchain_luma"
-version = "1.1.1"
+version = "1.1.2"
 description = "Python Client SDK for Luma (RustKissVDB)"
 authors = [
   { name = "Jairo Mendoza", email = "jairodaniel.mt@gmail.com" },
