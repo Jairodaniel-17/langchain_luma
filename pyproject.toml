@@ -44,6 +44,5 @@ testpaths = [
     "tests",
 ]
 
-
 [tool.setuptools.package-data]
 langchain_luma = ["bin/*"]
