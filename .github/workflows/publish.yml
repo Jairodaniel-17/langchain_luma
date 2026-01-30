@@ -8,7 +8,6 @@ jobs:
   pypi-publish:
     name: Upload release to PyPI
     runs-on: ubuntu-latest
-    # Ya no necesitamos permisos especiales de 'id-token'
     permissions:
       contents: read
     steps:
@@ -20,6 +19,24 @@ jobs:
         with:
           python-version: "3.10"
 
+      # --- NUEVO PASO: Descargar Binarios ---
+      - name: Download Luma Binaries
+        run: |
+          mkdir -p langchain_luma/bin
+          # Definir versión del backend a embeber
+          VERSION="v0.2.2"
+          BASE_URL="https://github.com/Jairodaniel-17/rust-kiss-vdb/releases/download/$VERSION"
+          
+          echo "Downloading binaries from $VERSION..."
+          
+          curl -L -o langchain_luma/bin/luma-linux-amd64 "$BASE_URL/luma-linux-amd64"
+          curl -L -o langchain_luma/bin/luma-windows-amd64.exe "$BASE_URL/luma-windows-amd64.exe"
+          curl -L -o langchain_luma/bin/luma-macos-amd64 "$BASE_URL/luma-macos-amd64"
+          
+          # Verificar descarga
+          ls -l langchain_luma/bin/
+      # --------------------------------------
+
       - name: Install build tools
         run: pip install build
 
@@ -29,5 +46,4 @@ jobs:
       - name: Publish distribution to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          # Aquí vinculamos el secreto que acabas de crear
           password: ${{ secrets.PYPI_API_TOKEN }}
