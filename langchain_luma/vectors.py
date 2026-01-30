@@ -11,9 +11,14 @@ from .validators import (
     validate_vector,
 )
 
+# ---------- Helpers ----------
+
 
 def _pick(data: Dict[str, Any], keys: set[str]) -> Dict[str, Any]:
     return {k: data[k] for k in keys if k in data}
+
+
+# ---------- Models ----------
 
 
 @dataclass
@@ -254,13 +259,11 @@ class VectorsClient:
         if meta is not None:
             validate_json_size(meta, self._http.config.max_json_bytes, "meta")
 
-        # CORRECCIÓN AQUÍ: Definir explícitamente el tipo como Dict[str, Any]
         payload: Dict[str, Any] = {"id": id}
-
         if vector is not None:
-            payload["vector"] = vector  # Ahora es válido
+            payload["vector"] = vector
         if meta is not None:
-            payload["meta"] = meta  # Ahora es válido
+            payload["meta"] = meta
 
         data = self._http._post(f"/v1/vector/{collection}/update", json=payload)
         return bool(data.get("ok", False))
@@ -339,9 +342,11 @@ class VectorsClient:
         payload = {
             "vector": vector,
             "k": k,
-            "filters": filters,
             "include_meta": include_meta,
         }
+        if filters:
+            payload["filters"] = filters
+
         data = self._http._post(
             f"/v1/vector/{collection}/search",
             json=payload,
