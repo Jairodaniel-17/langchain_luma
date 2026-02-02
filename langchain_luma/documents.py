@@ -37,7 +37,7 @@ class DocumentsClient:
         """Find documents by metadata."""
         payload = {"limit": limit}
         if filter:
-            payload["filter"] = filter
+            payload["filter"] = filter  # pyright: ignore[reportArgumentType]
 
         data = self._http._post(f"/v1/doc/{collection}/find", json=payload)
         return [DocRecord(**doc) for doc in data.get("documents", [])]

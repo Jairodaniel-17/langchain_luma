@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Luma Backend](https://img.shields.io/badge/Luma_Backend-v0.2.2-orange)](https://github.com/Jairodaniel-17/rust-kiss-vdb/releases/tag/v0.2.2)
 
-**langchain-luma** is a production-ready Python client SDK for **Luma (RustKissVDB)**, a high-performance, lightweight vector database written in Rust. This library provides both a direct HTTP client for low-level interaction and a fully compliant `VectorStore` implementation for seamless integration with the **LangChain** ecosystem.
+**langchain-luma** is a production-ready Python client SDK for **Luma (RustKissVDB)**, a high-performance, lightweight multi-model database written in Rust. Beyond vector storage, Luma supports **Document Store**, **SQL (SQLite-compatible)**, **Key-Value State Management**, and **Real-time Streams**. This library provides both a direct HTTP client for low-level interaction and a fully compliant `VectorStore` implementation for seamless integration with the **LangChain** ecosystem.
 
 ## System Architecture
 
@@ -79,9 +79,9 @@ pip install "langchain-luma[langchain]"
 
 ```
 
-## Core SDK Usage
+## Multi-Model SDK Usage
 
-The `LumaClient` class provides granular control over the database operations. It is organized into namespaces (`system`, `vectors`) for clarity.
+The `LumaClient` class provides granular control over the database operations. It is organized into namespaces (`system`, `vectors`, `documents`, `sql`, `state`, `stream`) for clarity.
 
 ```python
 import time
@@ -113,8 +113,8 @@ def run_pipeline():
     # This defines the schema for the vector space.
     try:
         client.vectors.create_collection(
-            name=COLLECTION_NAME, 
-            dim=VECTOR_DIMENSION, 
+            name=COLLECTION_NAME,
+            dim=VECTOR_DIMENSION,
             metric="cosine"
         )
         logger.info(f"Collection '{COLLECTION_NAME}' created successfully.")
@@ -124,7 +124,7 @@ def run_pipeline():
     # 4. Upsert Data
     # Simulating a document vector with metadata
     vector_id = "doc_ref_1024"
-    embedding_vector = [0.05] * VECTOR_DIMENSION 
+    embedding_vector = [0.05] * VECTOR_DIMENSION
     metadata = {
         "source": "internal_wiki",
         "author": "dev_ops",
@@ -148,11 +148,76 @@ def run_pipeline():
 
     logger.info("Search Results:")
     for result in search_results:
-        print(f"ID: {result.id} | Score: {result.score:.4f} | Payload: {result.payload}")
+        print(f"ID: {result.id} | Score: {result.score:.4f} | Metadata: {result.meta}")
 
 if __name__ == "__main__":
     run_pipeline()
 
+```
+
+### Document Store
+
+Luma provides a JSON document store with metadata filtering.
+
+```python
+# Store a document
+doc_id = "user_123"
+client.documents.put(
+    collection="users",
+    id=doc_id,
+    document={"name": "Alice", "role": "admin", "preferences": {"theme": "dark"}}
+)
+
+# Retrieve
+doc = client.documents.get(collection="users", id=doc_id)
+print(doc.doc)
+
+# Find by specific field
+users = client.documents.find(
+    collection="users",
+    filter={"role": "admin"}
+)
+```
+
+### SQL (SQLite)
+
+Execute standard SQL queries against the internal SQLite engine.
+
+```python
+# DDL/DML
+client.sql.exec("CREATE TABLE IF NOT EXISTS logistics (id INTEGER PRIMARY KEY, status TEXT)")
+client.sql.exec("INSERT INTO logistics (status) VALUES (?)", params=["shipped"])
+
+# Select
+rows = client.sql.query("SELECT * FROM logistics WHERE status = ?", params=["shipped"])
+print(rows)
+```
+
+### Key-Value State
+
+Manage distributed state with Optimistic Concurrency Control (OCC) and TTL.
+
+```python
+# Set state with TTL (Time To Live)
+client.state.put(
+    key="job_status:99",
+    value={"progress": 45, "stage": "processing"},
+    ttl_ms=60000 # Expires in 60s
+)
+
+# Get state
+state = client.state.get("job_status:99")
+print(state.value)
+```
+
+### Real-time Streams
+
+Subscribe to database events using Server-Sent Events (SSE).
+
+```python
+# Listen for all events
+for event in client.stream.events():
+    print(f"New Event: {event}")
 ```
 
 ## LangChain Integration
@@ -165,9 +230,9 @@ The following example demonstrates how to use Luma as a retrieval backend for a 
 
 ```python
 from langchain_core.documents import Document
-from langchain_luma.langchain.vectorstore import LumaVectorStore
+from langchain_luma import LumaVectorStore
 # NOTE: In production, use standard embeddings (OpenAI, HuggingFace, etc.)
-from langchain_community.embeddings import FakeEmbeddings 
+from langchain_community.embeddings import FakeEmbeddings
 
 # 1. Initialize Embeddings
 # The dimension size must match the collection configuration in Luma
@@ -176,13 +241,14 @@ embeddings = FakeEmbeddings(size=384)
 # 2. Connect to Vector Store
 # If the collection does not exist, LumaVectorStore can create it automatically
 # depending on the internal implementation of the 'add_documents' method.
-client_config = {"url": "http://localhost:1234"} 
-# Note: Alternatively, pass an instantiated LumaClient
 
-vector_store = LumaVectorStore.from_connection(
-    url="http://localhost:1234",
+vector_store = LumaVectorStore.from_params(
+    base_url="http://localhost:1234",
+    api_key="dev",
     collection_name="rag_knowledge_base",
-    embedding=embeddings
+    embedding=embeddings,
+    dim=384, # Required if creating a new collection
+    create_if_not_exists=True
 )
 
 # 3. Ingest Documents
@@ -235,15 +301,45 @@ The main entry point for the SDK.
 ### `LumaClient.vectors`
 
 * `create_collection(name: str, dim: int, metric: str = "cosine")`
-* Creates a new vector space. Metric options: `cosine`, `euclidean`, `dot`.
+* Creates a new vector space. Metric options: `cosine`, `dot`.
 
 
 * `upsert(collection: str, id: str, vector: list[float], meta: dict = None)`
-* Inserts or updates a vector with optional metadata payload.
+* Inserts or updates a vector with optional metadata meta.
 
 
 * `search(collection: str, vector: list[float], k: int = 10) -> list[Hit]`
-* Performs a k-Nearest Neighbors (k-NN) search. Returns a list of `Hit` objects containing `id`, `score`, and `payload`.
+* Performs a k-Nearest Neighbors (k-NN) search. Returns a list of `Hit` objects containing `id`, `score`, and `meta`.
+
+### `LumaClient.documents`
+
+* `put(collection: str, id: str, document: dict) -> DocRecord`
+* Stores a JSON document.
+* `get(collection: str, id: str) -> DocRecord`
+* Retrieves a document by ID.
+* `find(collection: str, filter: dict, limit: int) -> list[DocRecord]`
+* Queries documents using a MongoDB-like filter syntax.
+
+### `LumaClient.sql`
+
+* `exec(sql: str, params: list = None) -> dict`
+* Executes DDL/DML statements.
+* `query(sql: str, params: list = None) -> list[dict]`
+* Executes SELECT statements and returns rows.
+
+### `LumaClient.state`
+
+* `put(key: str, value: dict, ttl_ms: int = None, if_revision: int = None)`
+* Sets a key-value pair with optional expiration and revision check (OCC).
+* `get(key: str) -> StateItem`
+* Retrieves the current value and revision.
+* `batch_put(operations: list[StateBatchOperation])`
+* Performs atomic batch updates.
+
+### `LumaClient.stream`
+
+* `events(since: int = 0, types: str = None, key_prefix: str = None, collection: str = None)`
+* Detailed generator yielding SSE strings.
 
 
 
