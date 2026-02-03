@@ -25,7 +25,7 @@ jobs:
           mkdir -p langchain_luma/bin
           # Definir versión del backend a embeber
           VERSION="v0.2.2"
-          BASE_URL="https://github.com/Jairodaniel-17/rust-kiss-vdb/releases/download/$VERSION"
+          BASE_URL="https://github.com/Jairodaniel-17/Luma/releases/download/$VERSION"
           
           echo "Downloading binaries from $VERSION..."
           
