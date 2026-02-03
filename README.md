@@ -2,7 +2,7 @@
 
 [![PyPI version](https://badge.fury.io/py/langchain-luma.svg)](https://badge.fury.io/py/langchain-luma)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Luma Backend](https://img.shields.io/badge/Luma_Backend-v0.2.2-orange)](https://github.com/Jairodaniel-17/rust-kiss-vdb/releases/tag/v0.2.2)
+[![Luma Backend](https://img.shields.io/badge/Luma_Backend-v0.2.2-orange)](https://github.com/Jairodaniel-17/Luma/releases/tag/v0.2.2)
 
 **langchain-luma** is a production-ready Python client SDK for **Luma (RustKissVDB)**, a high-performance, lightweight multi-model database written in Rust. Beyond vector storage, Luma supports **Document Store**, **SQL (SQLite-compatible)**, **Key-Value State Management**, and **Real-time Streams**. This library provides both a direct HTTP client for low-level interaction and a fully compliant `VectorStore` implementation for seamless integration with the **LangChain** ecosystem.
 
@@ -37,7 +37,7 @@ graph TD
 This SDK acts as a client. To function, it requires a running instance of the Luma server (v0.2.2 or higher).
 
 1. **Download the Server Binary:**
-Download the appropriate executable for your operating system from the [Official Release Assets](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/Jairodaniel-17/rust-kiss-vdb/releases/tag/v0.2.2).
+Download the appropriate executable for your operating system from the [Official Release Assets](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/Jairodaniel-17/Luma/releases/tag/v0.2.2).
 * **Linux:** `luma-linux-amd64`
 * **Windows:** `luma-windows-amd64.exe`
 * **macOS:** `luma-macos-amd64`
